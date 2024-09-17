@@ -25,12 +25,11 @@
 import { ref, watch } from "vue";
 
 const props = defineProps<{ msg: string; value?:number }>();
-const emit = defineEmits<(event: "click", count: number) => void>();
+const emit = defineEmits<(event: "click") => void>();
 const count = ref(props.value || 0);
 
 function onClick() {
-  count.value++;
-  emit("click", count.value);
+  emit("click");
 }
 
 watch(() => props.value, (value) => {

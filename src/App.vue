@@ -8,38 +8,68 @@
     </a>
   </div>
   <HelloWorld @click="handleClick" msg="Vite + Vue" :value="count" />
+  <button @click="reset">Reset</button>
+  <button @click="replay">Replay</button>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import HelloWorld from './components/HelloWorld.vue'
-import { useEventStore } from './domain/stores/event-store/EventStore';
+import { onMounted, onUnmounted, ref } from "vue";
+import HelloWorld from "./components/HelloWorld.vue";
+import { useEventStore } from "./domain/stores/event-store/EventStore";
+import { EventHandler } from "./domain/services/event-handler/EventHandler.ts";
+import { Event } from "./domain/events/Event.ts";
 
 const store = useEventStore();
-const aggregateId = '1';
+const eventHandler = new EventHandler(store);
+
+const aggregateId = "1";
 const count = ref(0);
+let countValue = 0;
+
+const countHandler = (event: Event<number>) => {
+  console.log("Count Handler Triggered", event.data);
+  count.value = event.data;
+};
 
 onMounted(async () => {
-  const events = await store.findAll(aggregateId);
+  eventHandler.register("count", countHandler);
+});
+
+onUnmounted(() => {
+  eventHandler.unregister("count", countHandler);
+});
+
+function handleClick() {
+  console.log("Click Triggered");
+
+  eventHandler.event({
+    aggregateId: aggregateId,
+    type: "count",
+    data: ++countValue,
+  });
+}
+
+function reset() {
+  count.value = 0;
+  countValue = 0;
+  eventHandler.event({
+    aggregateId: aggregateId,
+    type: "count",
+    data: countValue,
+  });
+}
+
+async function replay() {
+  const events = await store.findAll("count", aggregateId);
   const cancel = setInterval(() => {
+    const next = events.next();
     if (events.done()) {
       clearInterval(cancel);
       return;
     }
-    const next = events.next();
-    count.value = next.data;
-  }, 500);
-});
 
-function handleClick(count: number) {
-  console.log('clicked');
-
-  store.create(
-    {
-      aggregateId: aggregateId,
-      data: count
-    }
-  )
+    count.value = next!.data;
+  }, 300);
 }
 </script>
 
